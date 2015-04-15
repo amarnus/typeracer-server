@@ -1,0 +1,3 @@
+[submodule "app"]
+	path = react-app
+	url = git@github.com:amarnus/react-typeracer.git

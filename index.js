@@ -2,7 +2,8 @@
   
   'use strict';
   
-  var app = require('express')();
+  var express = require('express');
+  var app = express();
   var session = require('express-session');
   var RedisStore = require('connect-redis')(session);
   var bodyParser = require('body-parser');
@@ -22,8 +23,13 @@
     store: new RedisStore(),
     resave: false,
     saveUninitialized: false,
-    secret: 'sessionSecretString'
+    secret: 'sessionSecretString',
+    cookie: {
+      httpOnly: false
+    }
   }));
+  
+  app.use('/', express.static('react-app'));
   
   app.get('/players', function(req, res) {
     User.getAllUsers(function(err, users) {
@@ -35,6 +41,13 @@
         users: users
       });
     });
+  });
+  
+  app.get('/player/me', User.userFromSession, function(req, res) {
+    if (!req.user) {
+      return res.sendStatus(404); 
+    }
+    res.json(req.user);
   });
   
   app.post('/player/enter', bodyParser.json(), User.userFromSession, function(req, res) {
@@ -57,7 +70,6 @@
         });
       }
       req.session.user_id = user.user_id;
-       
       req.session.cookie.expires = new Date(Date.now() + threeWeeks);
       res.sendStatus(204);
     });
