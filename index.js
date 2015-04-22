@@ -13,10 +13,26 @@
   var redis = require('redis');
   var redisClient = redis.createClient();
   var User = require('./lib/User')(redisClient);
+  var Game = require('./lib/Game')(redisClient);
   var _ = require('lodash');
+  var async = require('async');
   
   server.listen(4000);
   console.log(packageInfo.name + ' listening on port 4000...');
+  
+  io.on('connection', function(socket) {
+    console.log('New client just connected!');
+    
+    socket.on('hi', function() {
+      console.log('Client says "Hi"!');
+      socket.emit('hi');
+    });
+    
+    socket.on('disconnect', function() {
+      console.log('Client disconnected!');
+    });
+    
+  });
   
   app.use(session({
     name: _.snakeCase(packageInfo.name) + '.sid',
@@ -83,6 +99,31 @@
         });
       }
       res.sendStatus(204);
+    });
+  });
+  
+  app.post('/game/join', User.userFromSession, function(req, res) {
+    var user = req.user;
+    async.waterfall([
+      function(cb1) {
+        Game.joinGame(user.user_id, cb1);
+      },
+      function(gameId, cb1) {
+        console.log(arguments);
+        if (!gameId) {
+          return Game.createGame(user.user_id, cb1);
+        }
+        return cb1(null, gameId);
+      }
+    ], function(err, gameId) {
+      if (err) {
+        return res.status(500).json({
+          message: err
+        });
+      }
+      return res.status(200).json({
+        game_id: gameId
+      });
     });
   });
   
